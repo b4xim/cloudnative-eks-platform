@@ -258,9 +258,9 @@ resource "aws_iam_role" "aws_load_balancer_controller_role" {
     Statement = [
       {
         Action = [
-        "sts:AssumeRole",
-        "sts:TagSession"
-      ]
+          "sts:AssumeRole",
+          "sts:TagSession"
+        ]
         Effect = "Allow"
         Principal = {
           Service = "pods.eks.amazonaws.com"
@@ -278,9 +278,14 @@ resource "aws_iam_role_policy_attachment" "aws_load_balancer_controller_policy_a
   policy_arn = aws_iam_policy.aws_load_balancer_controller_policy.arn
 }
 resource "aws_eks_addon" "pod_identity_agent" {
-  cluster_name  = aws_eks_cluster.main.name
-  addon_name    = "eks-pod-identity-agent"
-  addon_version = "v1.3.9-eksbuild.2"
+  cluster_name = aws_eks_cluster.main.name
+  addon_name   = "eks-pod-identity-agent"
+}
+resource "aws_eks_pod_identity_association" "aws_load_balancer_controller" {
+  cluster_name    = aws_eks_cluster.main.name
+  namespace       = "kube-system"
+  service_account = "aws-load-balancer-controller"
+  role_arn        = aws_iam_role.aws_load_balancer_controller_role.arn
 }
 locals {
   project_name = "cloudnative-eks-dev-platform"
