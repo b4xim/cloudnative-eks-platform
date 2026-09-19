@@ -149,6 +149,47 @@ resource "aws_route" "private_2" {
   destination_cidr_block = "0.0.0.0/0"
   nat_gateway_id         = aws_nat_gateway.main_2.id
 }
+resource "aws_iam_role" "eks_cluster_role" {
+  name = "${local.project_name}-eks-cluster-role"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "eks.amazonaws.com"
+        }
+      },
+    ]
+  })
+  tags = {
+    Name        = "${local.project_name}-eks-cluster-role"
+    Environment = local.environment
+  }
+
+}
+resource "aws_iam_role_policy_attachment" "eks_cluster_policy" {
+  role       = aws_iam_role.eks_cluster_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
+}
+resource "aws_eks_cluster" "main" {
+  name     = "${local.project_name}-eks-cluster"
+  role_arn = aws_iam_role.eks_cluster_role.arn
+  version  = "1.35"
+
+  vpc_config {
+    subnet_ids = [
+      aws_subnet.private_1.id,
+      aws_subnet.private_2.id,
+    ]
+  }
+
+  tags = {
+    Name        = "${local.project_name}-eks-cluster"
+    Environment = local.environment
+  }
+}
 
 locals {
   project_name = "cloudnative-eks-dev-platform"
