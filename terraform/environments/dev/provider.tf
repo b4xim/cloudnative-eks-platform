@@ -233,7 +233,7 @@ resource "aws_eks_node_group" "main" {
     min_size     = 1
   }
 
-  instance_types = ["t3.medium"]
+  instance_types = ["t3.small"]
 
   tags = {
     Name        = "${local.project_name}-eks-node-group"
