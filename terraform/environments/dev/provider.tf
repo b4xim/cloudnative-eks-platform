@@ -240,6 +240,48 @@ resource "aws_eks_node_group" "main" {
     Environment = local.environment
   }
 }
+
+resource "aws_iam_policy" "aws_load_balancer_controller_policy" {
+  name        = "${local.project_name}-aws-load-balancer-controller-policy"
+  description = "Policy for AWS Load Balancer Controller"
+  policy      = file("${path.module}/iam_policy.json")
+  tags = {
+    Name        = "${local.project_name}-aws-load-balancer-controller-policy"
+    Environment = local.environment
+  }
+}
+
+resource "aws_iam_role" "aws_load_balancer_controller_role" {
+  name = "${local.project_name}-aws-load-balancer-controller-role"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = [
+        "sts:AssumeRole",
+        "sts:TagSession"
+      ]
+        Effect = "Allow"
+        Principal = {
+          Service = "pods.eks.amazonaws.com"
+        }
+      },
+    ]
+  })
+  tags = {
+    Name        = "${local.project_name}-aws-load-balancer-controller-role"
+    Environment = local.environment
+  }
+}
+resource "aws_iam_role_policy_attachment" "aws_load_balancer_controller_policy_attachment" {
+  role       = aws_iam_role.aws_load_balancer_controller_role.name
+  policy_arn = aws_iam_policy.aws_load_balancer_controller_policy.arn
+}
+resource "aws_eks_addon" "pod_identity_agent" {
+  cluster_name  = aws_eks_cluster.main.name
+  addon_name    = "eks-pod-identity-agent"
+  addon_version = "v1.3.9-eksbuild.2"
+}
 locals {
   project_name = "cloudnative-eks-dev-platform"
   environment  = "dev"
