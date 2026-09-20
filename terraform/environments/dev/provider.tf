@@ -287,6 +287,23 @@ resource "aws_eks_pod_identity_association" "aws_load_balancer_controller" {
   service_account = "aws-load-balancer-controller"
   role_arn        = aws_iam_role.aws_load_balancer_controller_role.arn
 }
+resource "aws_ecr_repository" "main" {
+  name = "${local.project_name}-ecr-repo"
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+  tags = {
+    Name        = "${local.project_name}-ecr-repo"
+    Environment = local.environment
+  }
+}
+resource "aws_ecr_lifecycle_policy" "main" {
+  repository = aws_ecr_repository.main.name
+  policy     = file("${path.module}/ecr_lifecycle_policy.json")
+}
+output "ecr_repository_url" {
+  value = aws_ecr_repository.main.repository_url
+}
 locals {
   project_name = "cloudnative-eks-dev-platform"
   environment  = "dev"
