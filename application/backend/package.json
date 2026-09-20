@@ -1,0 +1,31 @@
+{
+  "name": "taskmanager-backend",
+  "version": "1.0.0",
+  "description": "Task Management API — backend for the CloudNative EKS Platform",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "jest --forceExit --detectOpenHandles",
+    "test:watch": "jest --watch --forceExit --detectOpenHandles",
+    "test:coverage": "jest --coverage --forceExit --detectOpenHandles"
+  },
+  "keywords": ["task-manager", "devops", "express", "postgresql", "redis"],
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "helmet": "^7.1.0",
+    "pg": "^8.12.0",
+    "pino": "^9.3.2",
+    "pino-http": "^10.2.0",
+    "redis": "^4.7.0",
+    "uuid": "^10.0.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "nodemon": "^3.1.4",
+    "supertest": "^7.0.0"
+  }
+}
