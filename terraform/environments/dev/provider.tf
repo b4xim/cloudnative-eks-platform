@@ -301,6 +301,85 @@ resource "aws_ecr_lifecycle_policy" "main" {
   repository = aws_ecr_repository.main.name
   policy     = file("${path.module}/ecr_lifecycle_policy.json")
 }
+resource "aws_rds_cluster" "main" {
+  cluster_identifier        = "${local.project_name}-rds-cluster"
+  engine                    = "aurora-postgresql"
+  engine_version            = "15.4"
+  master_username           = "admin"
+  master_password           = random_password.rds_master_password.result
+  skip_final_snapshot       = true
+  backup_retention_period   = 7
+  vpc_security_group_ids    = [aws_security_group.rds.id]
+  db_subnet_group_name      = aws_db_subnet_group.main.name
+  db_cluster_parameter_group_name = aws_rds_cluster_parameter_group.main.name
+  tags = {
+    Name        = "${local.project_name}-rds-cluster"
+    Environment = local.environment
+  }
+}
+resource "aws_db_subnet_group" "main" {
+  name       = "${local.project_name}-db-subnet-group"
+  subnet_ids = [aws_subnet.private_1.id, aws_subnet.private_2.id]
+  tags = {
+    Name        = "${local.project_name}-db-subnet-group"
+    Environment = local.environment
+  }
+}
+resource "random_password" "rds_master_password" {
+  length           = 32
+  special          = true
+  }
+
+resource "aws_rds_cluster_instance" "main" {
+  count              = 2
+  identifier         = "${local.project_name}-rds-instance-${count.index + 1}"
+  cluster_identifier = aws_rds_cluster.main.id
+  instance_class     = "db.t3.small"
+  engine             = aws_rds_cluster.main.engine
+  engine_version     = aws_rds_cluster.main.engine_version
+  publicly_accessible = false
+  tags = {
+    Name        = "${local.project_name}-rds-instance-${count.index + 1}"
+    Environment = local.environment
+  }
+}
+
+resource "aws_rds_cluster_parameter_group" "main" {
+  name        = "${local.project_name}-rds-cluster-parameter-group"
+  family      = "aurora-postgresql15"
+  description = "Custom parameter group for Aurora PostgreSQL"
+
+  parameter {
+    name  = "rds.force_ssl"
+    value = "1"
+  }
+
+  tags = {
+    Name        = "${local.project_name}-rds-cluster-parameter-group"
+    Environment = local.environment
+  }
+}
+
+
+resource "aws_security_group" "rds" {
+  name        = "${local.project_name}-rds-sg"
+  description = "Security group for RDS cluster"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    from_port   = 5432
+    to_port     = 5432
+    protocol    = "tcp"
+    cidr_blocks = [var.vpc_cidr]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = [var.vpc_cidr]
+  }
+}
 output "ecr_repository_url" {
   value = aws_ecr_repository.main.repository_url
 }
