@@ -18,6 +18,8 @@ spec:
           ports:
             - containerPort: 3000
           env:
+            - name: PORT
+              value: "3000"
             - name: POSTGRES_HOST
               valueFrom:
                 secretKeyRef:
@@ -48,3 +50,5 @@ spec:
                 secretKeyRef:
                   name: postgres-secret
                   key: DATABASE_URL
+            - name: REDIS_URL
+              value: redis://redis-service:6379

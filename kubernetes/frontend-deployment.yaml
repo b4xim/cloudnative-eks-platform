@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: 474874559286.dkr.ecr.us-east-1.amazonaws.com/cloudnative-eks-dev-platform-ecr-repo:frontend-latest
-          imagePullPolicy: IfNotPresent
+          image: 474874559286.dkr.ecr.us-east-1.amazonaws.com/cloudnative-eks-dev-platform-ecr-repo:frontend-v2
+          imagePullPolicy: Always
           ports:
             - containerPort: 80

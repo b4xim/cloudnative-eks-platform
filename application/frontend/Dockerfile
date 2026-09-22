@@ -1,7 +1,7 @@
 # Frontend production image
 FROM node:20-alpine AS build
 
-ARG VITE_API_URL=http://localhost:8080
+ARG VITE_API_URL=/api
 ENV VITE_API_URL=$VITE_API_URL
 
 WORKDIR /app

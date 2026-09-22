@@ -6,11 +6,21 @@ metadata:
     kubernetes.io/ingress.class: alb
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
+
 spec:
   ingressClassName: alb
   rules:
     - http:
         paths:
+          # /api -> backend-service:3000
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: backend-service
+                port:
+                  number: 3000
+          # / -> frontend-service:80
           - path: /
             pathType: Prefix
             backend:

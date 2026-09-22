@@ -5,14 +5,19 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
  */
 export async function fetchTasks({ status, priority } = {}) {
   const params = new URLSearchParams();
+
   if (status) params.set('status', status);
   if (priority) params.set('priority', priority);
 
   const query = params.toString();
-  const url = `${API_URL}/api/tasks${query ? `?${query}` : ''}`;
+  const url = `${API_URL}/tasks${query ? `?${query}` : ''}`;
 
   const res = await fetch(url);
-  if (!res.ok) throw new Error(`Failed to fetch tasks: ${res.status}`);
+
+  if (!res.ok) {
+    throw new Error(`Failed to fetch tasks: ${res.status}`);
+  }
+
   const json = await res.json();
   return json.data;
 }
@@ -21,8 +26,12 @@ export async function fetchTasks({ status, priority } = {}) {
  * Fetch a single task by ID.
  */
 export async function fetchTask(id) {
-  const res = await fetch(`${API_URL}/api/tasks/${id}`);
-  if (!res.ok) throw new Error(`Failed to fetch task: ${res.status}`);
+  const res = await fetch(`${API_URL}/tasks/${id}`);
+
+  if (!res.ok) {
+    throw new Error(`Failed to fetch task: ${res.status}`);
+  }
+
   const json = await res.json();
   return json.data;
 }
@@ -31,15 +40,21 @@ export async function fetchTask(id) {
  * Create a new task.
  */
 export async function createTask(data) {
-  const res = await fetch(`${API_URL}/api/tasks`, {
+  const res = await fetch(`${API_URL}/tasks`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+    },
     body: JSON.stringify(data),
   });
+
   if (!res.ok) {
     const err = await res.json();
-    throw new Error(err.error?.details?.join(', ') || 'Failed to create task');
+    throw new Error(
+      err.error?.details?.join(', ') || 'Failed to create task'
+    );
   }
+
   const json = await res.json();
   return json.data;
 }
@@ -48,15 +63,21 @@ export async function createTask(data) {
  * Update an existing task.
  */
 export async function updateTask(id, data) {
-  const res = await fetch(`${API_URL}/api/tasks/${id}`, {
+  const res = await fetch(`${API_URL}/tasks/${id}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+    },
     body: JSON.stringify(data),
   });
+
   if (!res.ok) {
     const err = await res.json();
-    throw new Error(err.error?.details?.join(', ') || 'Failed to update task');
+    throw new Error(
+      err.error?.details?.join(', ') || 'Failed to update task'
+    );
   }
+
   const json = await res.json();
   return json.data;
 }
@@ -65,8 +86,11 @@ export async function updateTask(id, data) {
  * Delete a task.
  */
 export async function deleteTask(id) {
-  const res = await fetch(`${API_URL}/api/tasks/${id}`, {
+  const res = await fetch(`${API_URL}/tasks/${id}`, {
     method: 'DELETE',
   });
-  if (!res.ok) throw new Error(`Failed to delete task: ${res.status}`);
+
+  if (!res.ok) {
+    throw new Error(`Failed to delete task: ${res.status}`);
+  }
 }
