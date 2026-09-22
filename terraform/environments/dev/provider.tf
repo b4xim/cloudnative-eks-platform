@@ -305,22 +305,6 @@ resource "aws_ecr_lifecycle_policy" "main" {
   repository = aws_ecr_repository.main.name
   policy     = file("${path.module}/ecr_lifecycle_policy.json")
 }
-resource "aws_rds_cluster" "main" {
-  cluster_identifier        = "${local.project_name}-rds-cluster"
-  engine                    = "aurora-postgresql"
-  engine_version            = "15.4"
-  master_username           = "admin"
-  master_password           = random_password.rds_master_password.result
-  skip_final_snapshot       = true
-  backup_retention_period   = 7
-  vpc_security_group_ids    = [aws_security_group.rds.id]
-  db_subnet_group_name      = aws_db_subnet_group.main.name
-  db_cluster_parameter_group_name = aws_rds_cluster_parameter_group.main.name
-  tags = {
-    Name        = "${local.project_name}-rds-cluster"
-    Environment = local.environment
-  }
-}
 resource "aws_db_subnet_group" "main" {
   name       = "${local.project_name}-db-subnet-group"
   subnet_ids = [aws_subnet.private_1.id, aws_subnet.private_2.id]
@@ -329,29 +313,37 @@ resource "aws_db_subnet_group" "main" {
     Environment = local.environment
   }
 }
-resource "random_password" "rds_master_password" {
-  length           = 32
-  special          = true
-  }
 
-resource "aws_rds_cluster_instance" "main" {
-  count              = 2
-  identifier         = "${local.project_name}-rds-instance-${count.index + 1}"
-  cluster_identifier = aws_rds_cluster.main.id
-  instance_class     = "db.t3.small"
-  engine             = aws_rds_cluster.main.engine
-  engine_version     = aws_rds_cluster.main.engine_version
-  publicly_accessible = false
+resource "random_password" "rds_master_password" {
+  length  = 32
+  special = true
+}
+
+resource "aws_db_instance" "main" {
+  identifier             = "${local.project_name}-rds"
+  engine                 = "postgres"
+  engine_version         = "15.19"
+  instance_class         = "db.t4g.micro"
+  allocated_storage      = 20
+  db_name                = "appdb"
+  username               = "blade"
+  password               = random_password.rds_master_password.result
+  skip_final_snapshot    = true
+  publicly_accessible    = false
+  backup_retention_period = 1
+  vpc_security_group_ids = [aws_security_group.rds.id]
+  db_subnet_group_name   = aws_db_subnet_group.main.name
+  parameter_group_name   = aws_db_parameter_group.main.name
   tags = {
-    Name        = "${local.project_name}-rds-instance-${count.index + 1}"
+    Name        = "${local.project_name}-rds"
     Environment = local.environment
   }
 }
 
-resource "aws_rds_cluster_parameter_group" "main" {
-  name        = "${local.project_name}-rds-cluster-parameter-group"
-  family      = "aurora-postgresql15"
-  description = "Custom parameter group for Aurora PostgreSQL"
+resource "aws_db_parameter_group" "main" {
+  name        = "${local.project_name}-rds-parameter-group"
+  family      = "postgres15"
+  description = "Custom parameter group for PostgreSQL"
 
   parameter {
     name  = "rds.force_ssl"
@@ -359,7 +351,7 @@ resource "aws_rds_cluster_parameter_group" "main" {
   }
 
   tags = {
-    Name        = "${local.project_name}-rds-cluster-parameter-group"
+    Name        = "${local.project_name}-rds-parameter-group"
     Environment = local.environment
   }
 }
@@ -386,6 +378,13 @@ resource "aws_security_group" "rds" {
 }
 output "ecr_repository_url" {
   value = aws_ecr_repository.main.repository_url
+}
+output "rds_endpoint" {
+  value = aws_db_instance.main.endpoint
+}
+output "rds_master_password" {
+  value = random_password.rds_master_password.result
+  sensitive = true
 }
 locals {
   project_name = "cloudnative-eks-dev-platform"
