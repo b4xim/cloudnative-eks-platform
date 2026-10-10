@@ -321,20 +321,20 @@ resource "random_password" "rds_master_password" {
 }
 
 resource "aws_db_instance" "main" {
-  identifier             = "${local.project_name}-rds"
-  engine                 = "postgres"
-  engine_version         = "15.19"
-  instance_class         = "db.t4g.micro"
-  allocated_storage      = 20
-  db_name                = "appdb"
-  username               = "blade"
-  password               = random_password.rds_master_password.result
-  skip_final_snapshot    = true
-  publicly_accessible    = false
+  identifier              = "${local.project_name}-rds"
+  engine                  = "postgres"
+  engine_version          = "15.19"
+  instance_class          = "db.t4g.micro"
+  allocated_storage       = 20
+  db_name                 = "appdb"
+  username                = "blade"
+  password                = random_password.rds_master_password.result
+  skip_final_snapshot     = true
+  publicly_accessible     = false
   backup_retention_period = 1
-  vpc_security_group_ids = [aws_security_group.rds.id]
-  db_subnet_group_name   = aws_db_subnet_group.main.name
-  parameter_group_name   = aws_db_parameter_group.main.name
+  vpc_security_group_ids  = [aws_security_group.rds.id]
+  db_subnet_group_name    = aws_db_subnet_group.main.name
+  parameter_group_name    = aws_db_parameter_group.main.name
   tags = {
     Name        = "${local.project_name}-rds"
     Environment = local.environment
@@ -377,15 +377,74 @@ resource "aws_security_group" "rds" {
     cidr_blocks = [var.vpc_cidr]
   }
 }
+
+resource "aws_secretsmanager_secret" "rds_master_password" {
+  name        = "${local.project_name}-rds-master-password"
+  description = "Master password for RDS instance"
+  tags = {
+    Name        = "${local.project_name}-rds-master-password"
+    Environment = local.environment
+  }
+
+}
+resource "aws_secretsmanager_secret_version" "rds_master_password" {
+  secret_id     = aws_secretsmanager_secret.rds_master_password.id
+  secret_string = random_password.rds_master_password.result
+}
+resource "aws_iam_policy" "rds_secrets_manager_access" {
+  name        = "${local.project_name}-rds-secrets-manager-access"
+  description = "Allow reading the RDS master password secret"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["secretsmanager:GetSecretValue"]
+      Resource = aws_secretsmanager_secret.rds_master_password.arn
+    }]
+  })
+}
+
+resource "aws_iam_role" "backend_workload" {
+  name = "${local.project_name}-backend-workload"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Principal = {
+        Service = "pods.eks.amazonaws.com"
+      }
+      Action = [
+        "sts:AssumeRole",
+        "sts:TagSession"
+      ]
+    }]
+  })
+
+  tags = {
+    Name        = "${local.project_name}-backend-workload"
+    Environment = local.environment
+  }
+}
+resource "aws_iam_role_policy_attachment" "backend_workload_policy_attachment" {
+  role       = aws_iam_role.backend_workload.name
+  policy_arn = aws_iam_policy.rds_secrets_manager_access.arn
+}
+
+resource "aws_eks_pod_identity_association" "backend_workload" {
+  cluster_name    = aws_eks_cluster.main.name
+  namespace       = "default"
+  service_account = "backend"
+  role_arn        = aws_iam_role.backend_workload.arn
+}
+
+
 output "ecr_repository_url" {
   value = aws_ecr_repository.main.repository_url
 }
 output "rds_endpoint" {
   value = aws_db_instance.main.endpoint
-}
-output "rds_master_password" {
-  value = random_password.rds_master_password.result
-  sensitive = true
 }
 locals {
   project_name = "cloudnative-eks-dev-platform"

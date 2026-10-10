@@ -52,3 +52,5 @@ spec:
                   key: DATABASE_URL
             - name: REDIS_URL
               value: redis://redis-service:6379
+            - name: RDS_SECRET_NAME
+              value: "cloudnative-eks-dev-platform-rds-master-password"

@@ -2,28 +2,60 @@ const { Pool } = require('pg');
 const config = require('./index');
 const logger = require('../lib/logger');
 
-const pool = new Pool({
-  host: process.env.POSTGRES_HOST,
-  port: parseInt(process.env.POSTGRES_PORT, 10),
-  database: process.env.POSTGRES_DB,
-  user: process.env.POSTGRES_USER,
-  password: process.env.POSTGRES_PASSWORD,
-  min: config.database.poolMin,
-  max: config.database.poolMax,
-  ssl: {
-    rejectUnauthorized: false,
-  },
+const {
+  SecretsManagerClient,
+  GetSecretValueCommand,
+} = require('@aws-sdk/client-secrets-manager');
+
+const secretsClient = new SecretsManagerClient({
+  region: process.env.AWS_REGION || 'us-east-1',
 });
 
-pool.on('error', (err) => {
-  logger.error({ err }, 'Unexpected PostgreSQL pool error');
-});
+let pool;
+
+async function getDatabasePassword() {
+  const command = new GetSecretValueCommand({
+    SecretId: process.env.RDS_SECRET_NAME,
+  });
+
+  const response = await secretsClient.send(command);
+
+  if (!response.SecretString) {
+    throw new Error('RDS database password secret is empty');
+  }
+
+  return response.SecretString;
+}
+
+async function initPool() {
+  const password = await getDatabasePassword();
+
+  pool = new Pool({
+    host: process.env.POSTGRES_HOST,
+    port: parseInt(process.env.POSTGRES_PORT, 10),
+    database: process.env.POSTGRES_DB,
+    user: process.env.POSTGRES_USER,
+    password,
+    min: config.database.poolMin,
+    max: config.database.poolMax,
+    ssl: {
+      rejectUnauthorized: false,
+    },
+  });
+
+  pool.on('error', (err) => {
+    logger.error({ err }, 'Unexpected PostgreSQL pool error');
+  });
+}
 
 /**
  * Initialize the database — create the tasks table if it does not exist.
  */
 async function initDatabase() {
+  await initPool();
+
   const client = await pool.connect();
+
   try {
     await client.query(`
       CREATE TABLE IF NOT EXISTS tasks (
@@ -38,6 +70,7 @@ async function initDatabase() {
         updated_at TIMESTAMPTZ DEFAULT NOW()
       );
     `);
+
     logger.info('Database initialized — tasks table ready');
   } catch (err) {
     logger.error({ err }, 'Failed to initialize database');
@@ -51,8 +84,10 @@ async function initDatabase() {
  * Close the pool gracefully.
  */
 async function closeDatabase() {
-  await pool.end();
-  logger.info('Database pool closed');
+  if (pool) {
+    await pool.end();
+    logger.info('Database pool closed');
+  }
 }
 
-module.exports = { pool, initDatabase, closeDatabase };
+module.exports = { get pool() { return pool; }, initDatabase, closeDatabase };
